@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,14 +28,14 @@ namespace Hangfire.RecurringJobAdmin.Pages
         {
             var response = new Response() { Status = true };
 
-            var job = new PeriodicJob();
-            job.Id = context.Request.GetQuery("Id");
-            job.Cron = context.Request.GetQuery("Cron");
-            job.Class = context.Request.GetQuery("Class");
-            job.Method = context.Request.GetQuery("Method");
-            job.Queue = context.Request.GetQuery("Queue");
+            
+            string jobId = context.Request.GetQuery("Id");
+            string jobCron = context.Request.GetQuery("Cron");
+            string jobClass = context.Request.GetQuery("Class");
+            string jobMethod = context.Request.GetQuery("Method");
+            string jobQueue = context.Request.GetQuery("Queue");
 
-            if (!Utility.IsValidSchedule(job.Cron))
+            if (!Utility.IsValidSchedule(jobCron))
             {
                 response.Status = false;
                 response.Message = "Invalid CRON";
@@ -43,16 +44,35 @@ namespace Hangfire.RecurringJobAdmin.Pages
 
                 return;
             }
-            
+            Type classType = GetType(jobClass);
+            MethodInfo methodInfo = classType.GetMethod(jobMethod);
 
+            var job = new Hangfire.Common.Job(classType, methodInfo);
             var manager = new RecurringJobManager(context.Storage);
 
-            manager.AddOrUpdate(job.Id, () => ReflectionHelper.InvokeVoidMethod(job.Class, job.Method), job.Cron, TimeZoneInfo.Utc, job.Queue);
+            //manager.AddOrUpdate(job.Id, () => ReflectionHelper.InvokeVoidMethod(job.Class, job.Method), job.Cron, TimeZoneInfo.Utc, job.Queue);
+            
+            
+            manager.AddOrUpdate(jobId, job, jobCron, new RecurringJobOptions() { TimeZone = TimeZoneInfo.Utc, QueueName = jobQueue });
+
 
             context.Response.StatusCode = (int)HttpStatusCode.OK;
 
             await context.Response.WriteAsync(JsonConvert.SerializeObject(response));
 
+        }
+
+        public static Type GetType(string typeName)
+        {
+            var type = Type.GetType(typeName);
+            if (type != null) return type;
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                type = a.GetType(typeName);
+                if (type != null)
+                    return type;
+            }
+            return null;
         }
     }
 }

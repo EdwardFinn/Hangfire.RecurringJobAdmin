@@ -8,10 +8,12 @@ namespace Hangfire.RecurringJobAdmin
 {
     public static class ConfigurationExtensions
     {
+        private static String _pathMatch = "/HangFire";
 
         [PublicAPI]
-        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config, string assembly)
+        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config, string assembly, string pathMatch = "/HangFire")
         {
+            _pathMatch = pathMatch;
             PeriodicJobBuilder.GetAllJobs(Type.GetType(assembly).Assembly);
             CreateManagmentJob();
             return config;
@@ -19,8 +21,9 @@ namespace Hangfire.RecurringJobAdmin
 
 
         [PublicAPI]
-        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config, Assembly assembly)
+        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config, Assembly assembly, string pathMatch = "/HangFire")
         {
+            _pathMatch = pathMatch;
             PeriodicJobBuilder.GetAllJobs(assembly);
             CreateManagmentJob();
             return config;
@@ -28,8 +31,9 @@ namespace Hangfire.RecurringJobAdmin
 
 
         [PublicAPI]
-        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config)
+        public static IGlobalConfiguration UseRecurringJobAdmin(this IGlobalConfiguration config, string pathMatch = "/HangFire")
         {
+            _pathMatch = pathMatch;
             CreateManagmentJob();
             return config;
         }
@@ -41,9 +45,9 @@ namespace Hangfire.RecurringJobAdmin
             DashboardRoutes.Routes.Add("/JobConfiguration/UpdateJobs", new ChangeJobDispatcher());
             DashboardRoutes.Routes.Add("/JobConfiguration/GetJob", new GetJobForEdit());
 
+            
 
-
-            NavigationMenu.Items.Add(page => new MenuItem(JobExtensionPage.Title, "JobConfiguration")
+            NavigationMenu.Items.Add(page => new MenuItem(JobExtensionPage.Title, $"{_pathMatch}{JobExtensionPage.PageRoute}")
             {
                 Active = page.RequestPath.StartsWith(JobExtensionPage.PageRoute)
             });
